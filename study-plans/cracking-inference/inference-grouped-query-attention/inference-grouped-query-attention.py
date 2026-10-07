@@ -13,8 +13,10 @@ def grouped_query_attention(
     """
     Returns an attention tensor with the same shape as hidden_states.
     """
+    if num_query_heads % num_kv_heads != 0:
+        raise ValueError(f"query heads {num_query_heads} not divisible by kv heads {num_kv_heads}")
+
     batch, num_tokens, d_in = hidden_states.shape
-    
     head_dim = d_in // num_query_heads
     mask = torch.triu(
         torch.ones(num_tokens, num_tokens, dtype=torch.bool, device=hidden_states.device),
@@ -26,8 +28,6 @@ def grouped_query_attention(
     keys = torch.matmul(hidden_states, w_k).view(batch, num_tokens, num_kv_heads, head_dim).transpose(1, 2)
     values = torch.matmul(hidden_states, w_v).view(batch, num_tokens, num_kv_heads, head_dim).transpose(1, 2)
 
-    if num_query_heads % num_kv_heads != 0:
-        raise ValueError(f"query heads {num_query_heads} not divisible by kv heads {num_kv_heads}")
     # Repeat each head count in the head count dim
     # This matches the mat sizes between Q and K/V
     repeats = num_query_heads // num_kv_heads
